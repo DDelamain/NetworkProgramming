@@ -7,6 +7,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <iphlpapi.h>
+#include <Errors.h>
 
 #pragma comment(lib, "WS2_32.lib")
 using namespace std;
@@ -44,7 +45,7 @@ void main()
 	SOCKET connect_socket = socket(target->ai_family, target->ai_socktype, target->ai_protocol);
 	if (connect_socket == INVALID_SOCKET)
 	{
-		cout << "SOCKET creation failed with error:\t" << WSAGetLastError() << endl;
+		cout << "SOCKET creation failed with error:\t" << FormatLastError(WSAGetLastError()) << endl;
 		freeaddrinfo(target);
 		WSACleanup();
 		return;
@@ -68,7 +69,7 @@ void main()
 	iResult = send(connect_socket, send_buffer, strlen(send_buffer), 0);
 	if (iResult == SOCKET_ERROR)
 	{
-		cout << "Send failed with error: " << WSAGetLastError() << endl;
+		cout << "Send failed with error: " << FormatLastError(WSAGetLastError()) << endl;
 		closesocket(connect_socket);
 		WSACleanup();
 		return;
@@ -81,12 +82,12 @@ void main()
 		if (iResult > 0)
 			cout << "Bytes received: " << iResult << "Message: " << recv_buffer << endl;
 		else if (iResult == 0)cout << "Connection closed" << endl;
-		else cout << "Receive failed with error" << WSAGetLastError() << endl;
+		else cout << "Receive failed with error" << FormatLastError(WSAGetLastError()) << endl;
 	} while (iResult > 0);
 
 	iResult = shutdown(connect_socket, SD_BOTH);
 	if (iResult == SOCKET_ERROR)
-		cout << "Shutdown failed with error " << WSAGetLastError() << endl;
+		cout << "Shutdown failed with error " << FormatLastError(WSAGetLastError()) << endl;
 	//7)
 	closesocket(connect_socket);
 	WSACleanup();

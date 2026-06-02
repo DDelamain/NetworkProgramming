@@ -6,6 +6,7 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <iphlpapi.h>
+#include <Errors.h>
 using namespace std;
 
 #pragma comment(lib, "WS2_32.lib")
@@ -45,7 +46,7 @@ void main()
 	SOCKET listen_socket = socket(target->ai_family, target->ai_socktype, target->ai_protocol);
 	if (listen_socket == INVALID_SOCKET)
 	{
-		cout << "SOCKET creation failed with error: " << WSAGetLastError() << endl;
+		cout << "SOCKET creation failed with error: " << FormatLastError(WSAGetLastError()) << endl;
 		freeaddrinfo(target);
 		WSACleanup();
 		return;
@@ -54,7 +55,7 @@ void main()
 	iResult = bind(listen_socket, target->ai_addr, target->ai_addrlen);
 	if (iResult != 0)
 	{
-		cout << "bing failed with error : " << WSAGetLastError() << endl;
+		cout << "bing failed with error : " << FormatLastError(WSAGetLastError()) << endl;
 		freeaddrinfo(target);
 		closesocket(listen_socket);
 		WSACleanup();
@@ -63,7 +64,7 @@ void main()
 	//5)
 	if (listen(listen_socket, 1) == SOCKET_ERROR)
 	{
-		cout << "Listen failed with error: " << WSAGetLastError() << endl;
+		cout << "Listen failed with error: " << FormatLastError(WSAGetLastError()) << endl;
 		closesocket(listen_socket);
 		freeaddrinfo(target);
 		WSACleanup();
@@ -73,7 +74,7 @@ void main()
 	SOCKET client_socket = accept(listen_socket, NULL, NULL);
 	if (client_socket == INVALID_SOCKET)
 	{
-		cout << "Accept failed with error: " << WSAGetLastError() << endl;
+		cout << "Accept failed with error: " << FormatLastError(WSAGetLastError()) << endl;
 		closesocket(listen_socket);
 		freeaddrinfo(target);
 		WSACleanup();
@@ -91,15 +92,15 @@ void main()
 		{
 			cout << "Received" << iReceivedBytes << " " << recv_buffer << endl;
 			iSentBytes = send(client_socket, send_buffer, strlen(send_buffer), 0);
-			if (iSentBytes == SOCKET_ERROR) cout << "Send failed with error:\t" << WSAGetLastError() << endl;
+			if (iSentBytes == SOCKET_ERROR) cout << "Send failed with error:\t" << FormatLastError(WSAGetLastError()) << endl;
 			else cout << iSentBytes << "Bytes sent" << endl;
 		}
 		else if (iReceivedBytes == 0) cout << "Connection closing..." << endl;
-		else cout << "Receive failed with error: " << WSAGetLastError() << endl;
+		else cout << "Receive failed with error: " << FormatLastError(WSAGetLastError()) << endl;
 	} while (iReceivedBytes > 0);
 	//8)
 	iResult = shutdown(client_socket, SD_BOTH);
-	if (iResult != SOCKET_ERROR) cout << "shutdown failed with error: \t" << WSAGetLastError();
+	if (iResult != SOCKET_ERROR) cout << "shutdown failed with error: \t" << FormatLastError(WSAGetLastError());
 	//?)
 	closesocket(listen_socket);
 	freeaddrinfo(target);
