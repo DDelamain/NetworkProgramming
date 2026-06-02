@@ -12,10 +12,14 @@
 using namespace std;
 #define MTU 1500
 
+CHAR* FormatLastError(DWORD dwError, CHAR szError[]);
+
 void main()
 {
 	setlocale(LC_ALL, "");
 	cout << "CLIENT" << endl;
+	DWORD dwError = 0;
+	CHAR szError[256] = {};
 	//1) Инициализация WinSOCK
 	WSAData wsaData;
 	int iResult = 0;
@@ -42,19 +46,23 @@ void main()
 	}
 	//3)
 	SOCKET connect_socket = socket(target->ai_family, target->ai_socktype, target->ai_protocol);
+	dwError = WSAGetLastError();
 	if (connect_socket == INVALID_SOCKET)
 	{
 		cout << "SOCKET creation failed with error:\t" << WSAGetLastError() << endl;
+		cout << FormatLastError(dwError, szError) << endl;
 		freeaddrinfo(target);
 		WSACleanup();
 		return;
 	}
 	//4)Подключаемся к узлу
 	iResult = connect(connect_socket, target->ai_addr, target->ai_addrlen);
-	DWORD dwError = WSAGetLastError();
+	dwError = WSAGetLastError();
 	if (iResult == SOCKET_ERROR)
 	{
-		cout << "Error" << dwError << ":\t";
+		//cout << "Error" << dwError << ":\t";
+		cout << FormatLastError(dwError, szError) << endl;
+		//cout << lpError << endl;
 		cout << "Unable to connect to server: " << endl;
 		closesocket(connect_socket);
 		//freeaddrinfo(target);
@@ -66,9 +74,11 @@ void main()
 	//5)Отправка:
 	CHAR send_buffer[MTU] = "Hello Server";
 	iResult = send(connect_socket, send_buffer, strlen(send_buffer), 0);
+	dwError = WSAGetLastError();
 	if (iResult == SOCKET_ERROR)
 	{
 		cout << "Send failed with error: " << WSAGetLastError() << endl;
+		cout << FormatLastError(dwError, szError) << endl;
 		closesocket(connect_socket);
 		WSACleanup();
 		return;
@@ -81,13 +91,32 @@ void main()
 		if (iResult > 0)
 			cout << "Bytes received: " << iResult << "Message: " << recv_buffer << endl;
 		else if (iResult == 0)cout << "Connection closed" << endl;
-		else cout << "Receive failed with error" << WSAGetLastError() << endl;
+		else cout << "Receive failed with error" << FormatLastError(dwError,szError) << endl;
 	} while (iResult > 0);
 
 	iResult = shutdown(connect_socket, SD_BOTH);
 	if (iResult == SOCKET_ERROR)
-		cout << "Shutdown failed with error " << WSAGetLastError() << endl;
+		cout << "Shutdown failed with error " << FormatLastError(WSAGetLastError(), szError) << endl;
 	//7)
 	closesocket(connect_socket);
 	WSACleanup();
+}
+
+CHAR* FormatLastError(DWORD dwError, CHAR szError[])
+{
+	LPSTR lpError = NULL;
+	FormatMessage
+	(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL,
+		dwError,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPSTR)&lpError,
+		0,
+		NULL
+	);
+	//strcpy(szError, lpError);
+	sprintf(szError, "Error %i:%s", dwError, lpError);
+	LocalFree(lpError);
+	return szError;
 }
