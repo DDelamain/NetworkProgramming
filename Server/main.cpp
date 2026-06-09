@@ -8,6 +8,7 @@
 #include <WS2tcpip.h>
 #include <iphlpapi.h>
 #include<FormatLastError.h>
+#include <Messages.h>
 using namespace std;
 
 #pragma comment(lib, "WS2_32.lib")
@@ -27,6 +28,8 @@ INT g_ActiveClients = 0;
 void main()
 {
 	setlocale(LC_ALL, "");
+	DWORD dwError = 0;
+	CHAR szError[256] = {};
 	cout << "SERVER" << endl;
 	WSADATA wsaData;
 	INT iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -73,7 +76,7 @@ void main()
 		return;
 	}
 	//5)
-	if (listen(listen_socket, 1) == SOCKET_ERROR)
+	if (listen(listen_socket, MAX_CONNECTIONS) == SOCKET_ERROR)
 	{
 		cout << "Listen failed with error: " << WSAGetLastError() << endl;
 		closesocket(listen_socket);
@@ -100,17 +103,29 @@ void main()
 
 		//7) Получаем данные от клиента:
 		//ClientHandle(client_socket);
-		client_sockets[g_ActiveClients] = client_socket;
-		hThreads[g_ActiveClients] = CreateThread
-		(
-			NULL,
-			0,		
-			(LPTHREAD_START_ROUTINE)ClientHandle,
-			(LPVOID)client_sockets[g_ActiveClients],
-			NULL,
-			&dwThreadIDs[g_ActiveClients]
-		);
-		g_ActiveClients++;
+		if (g_ActiveClients < MAX_CONNECTIONS)
+		{
+			client_sockets[g_ActiveClients] = client_socket;
+			hThreads[g_ActiveClients] = CreateThread
+			(
+				NULL,
+				0,
+				(LPTHREAD_START_ROUTINE)ClientHandle,
+				(LPVOID)client_sockets[g_ActiveClients],
+				NULL,
+				&dwThreadIDs[g_ActiveClients]
+			);
+			g_ActiveClients++;
+		}
+		else
+		{
+			iResult = send(client_socket, DECLINE_MESSAGE, strlen(DECLINE_MESSAGE), 0);
+			dwError = WSAGetLastError();
+			if (iResult != 0) cout << FormatLastError(dwError, szError) << endl;
+			iResult = shutdown(client_socket, SD_BOTH); if (iResult != 0) cout << FormatLastError(WSAGetLastError(), szError) << endl;
+			iResult = closesocket(client_socket);		if (iResult != 0) cout << FormatLastError(WSAGetLastError(), szError) << endl;
+			cout << "DECLINED" << endl;
+		}
 	} while (true);
 	//Синхронизируем все потоки с основным потоком, в котором выполняется main()
 
