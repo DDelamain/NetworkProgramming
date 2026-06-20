@@ -107,15 +107,19 @@ class Car
 	Engine engine;
 	Tank tank;
 	bool driver_inside;
+	double speed;
+	bool breaks_is_on;
 	struct CarThreads
 	{
 		std::thread panel_thread;
 		std::thread engine_idle_thread;
+		std::thread friction_thread;
 	}car_threads;
 public:
-	Car(double consumtion, int capacity = 50) : engine(consumtion), tank(capacity)
+	Car(double consumtion, int capacity = 50) : engine(consumtion), tank(capacity), speed(0)
 	{
 		driver_inside = false;
+		breaks_is_on = false;
 		cout << "Your car is ready to go, press Enter to get in " << this << endl;
 	}
 	~Car()
@@ -144,6 +148,8 @@ public:
 			engine.start();
 			if (!car_threads.engine_idle_thread.joinable())
 				car_threads.engine_idle_thread = std::thread(&Car::engine_idle, this);
+			if (!car_threads.friction_thread.joinable())
+				car_threads.friction_thread = std::thread(&Car::friction, this);
 		}
 	}
 	void shutdown()
@@ -151,6 +157,25 @@ public:
 		engine.stop();
 		if (car_threads.engine_idle_thread.joinable())
 			car_threads.engine_idle_thread.join();
+	}
+	double get_current_consumption()
+	{
+		if (speed >= 1 && speed <= 60)
+			return 0.0020;
+
+		if (speed >= 61 && speed <= 100)
+			return 0.0014;
+
+		if (speed >= 101 && speed <= 140)
+			return 0.0020;
+
+		if (speed >= 141 && speed <= 200)
+			return 0.0025;
+
+		if (speed >= 201 && speed <= 250)
+			return 0.0030;
+
+		return engine.get_consumption_per_second();
 	}
 	void control()
 	{
@@ -181,6 +206,24 @@ public:
 				if (driver_inside && !engine.started())startup();
 				else if (driver_inside)shutdown();
 				break;
+			case 'W':
+			case 'w':
+				if (driver_inside && engine.started())
+				{
+					breaks_is_on = false;
+					speed += 10;
+					if (speed > 250) speed = 250;
+				}
+				break;
+			case 'S':
+			case 's':
+				if (driver_inside && engine.started())
+				{
+					breaks_is_on = true;
+					speed -= 10;
+					if (speed < 0) speed = 0;
+				}
+				break;
 			case Escape:
 				shutdown();
 				get_out();
@@ -188,10 +231,23 @@ public:
 			if (tank.get_fuel_level() == 0 && engine.started())shutdown();
 		} while (key != Escape);
 	}
+	void friction()
+	{
+		while (driver_inside)
+		{
+			if (speed > 0)
+			{
+				speed--;
+				if (engine.started())
+					tank.give_fuel(get_current_consumption());
+			}
+			std::this_thread::sleep_for(1s);
+		}
+	}
 	void engine_idle()
 	{
-		while (engine.started() && tank.give_fuel(engine.get_consumption_per_second()))
-			std::this_thread::sleep_for(100ms);
+		while (engine.started() && tank.give_fuel(get_current_consumption()))
+			std::this_thread::sleep_for(1s);
 	}
 	void panel()
 	{
@@ -206,9 +262,10 @@ public:
 				cout << " LOW FUEL ";
 				SetConsoleTextAttribute(hConsole, 0x07);
 			}
+			cout << "\nSpeed: " << speed << " km/h\n";
 			cout << endl;
 			cout << "Engine is " << (engine.started() ? "started" : "stoped") << endl;
-			std::this_thread::sleep_for(1s);
+			std::this_thread::sleep_for(100ms);
 		}
 	}
 };
