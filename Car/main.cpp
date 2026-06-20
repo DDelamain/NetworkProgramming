@@ -264,6 +264,7 @@ public:
 			}
 			cout << "\nSpeed: " << speed << " km/h\n";
 			cout << endl;
+			cout << "\nConsumption:  " << get_current_consumption() << endl;
 			cout << "Engine is " << (engine.started() ? "started" : "stoped") << endl;
 			std::this_thread::sleep_for(100ms);
 		}
