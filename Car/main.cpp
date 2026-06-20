@@ -154,10 +154,12 @@ public:
 	}
 	void control()
 	{
-		char key = 0;
+		char key;
 		do
 		{
-			key = _getch();
+			key = 0;
+			if(_kbhit())
+				key = _getch();
 			switch (key)
 			{
 			case Enter:
@@ -176,19 +178,20 @@ public:
 				break;
 			case 'I':
 			case 'i':
-				if (!engine.started())startup();
-				else shutdown();
+				if (driver_inside && !engine.started())startup();
+				else if (driver_inside)shutdown();
 				break;
 			case Escape:
 				shutdown();
 				get_out();
 			}
+			if (tank.get_fuel_level() == 0 && engine.started())shutdown();
 		} while (key != Escape);
 	}
 	void engine_idle()
 	{
 		while (engine.started() && tank.give_fuel(engine.get_consumption_per_second()))
-			std::this_thread::sleep_for(1s);
+			std::this_thread::sleep_for(100ms);
 	}
 	void panel()
 	{
