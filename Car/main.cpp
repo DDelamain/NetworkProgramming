@@ -2,6 +2,7 @@
 #include <iostream>
 #include <conio.h>
 #include <chrono>
+#include <mutex>
 #include<thread>
 using std::cin;
 using std::cout;
@@ -109,6 +110,7 @@ class Car
 	bool driver_inside;
 	struct CarThreads
 	{
+		std::mutex mutex;
 		std::thread panel_thread;
 		std::thread engine_idle_thread;
 	}car_threads;
@@ -168,6 +170,7 @@ public:
 				break;
 			case 'F':
 			case 'f':
+				car_threads.mutex.lock();
 				if (!driver_inside && !engine.started())
 				{
 					double amount;
@@ -175,6 +178,7 @@ public:
 					tank.fill(amount);
 				}
 				else cout << "\nЌужно заглушить двигатель и выйти из машины, у нас только самообслуживание" << endl;
+				car_threads.mutex.unlock();
 				break;
 			case 'I':
 			case 'i':
